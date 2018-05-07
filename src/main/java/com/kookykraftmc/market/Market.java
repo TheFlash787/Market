@@ -6,6 +6,7 @@ import com.kookykraftmc.market.commands.MarketCommand;
 import com.kookykraftmc.market.commands.subcommands.*;
 import com.kookykraftmc.market.commands.subcommands.blacklist.BlacklistAddCommand;
 import com.kookykraftmc.market.commands.subcommands.blacklist.BlacklistRemoveCommand;
+import com.sun.net.httpserver.Authenticator;
 import ninja.leaping.configurate.ConfigurationNode;
 import ninja.leaping.configurate.commented.CommentedConfigurationNode;
 import ninja.leaping.configurate.hocon.HoconConfigurationLoader;
@@ -71,6 +72,7 @@ public class Market {
     private ConfigurationLoader<CommentedConfigurationNode> configManager;
 
     private String serverName;
+    private String Currency;
     private int redisPort;
     private String redisHost;
     private String redisPass;
@@ -97,6 +99,7 @@ public class Market {
                 this.cfg.getNode("Redis", "Password").setValue("password");
 
                 this.cfg.getNode("Market", "Sponge", "Server").setValue("TEST");
+                this.cfg.getNode("Market", "Preferences", "Currency").setValue("$");
                 logger.info("Config created...");
                 this.getConfigManager().save(cfg);
             }
@@ -107,6 +110,7 @@ public class Market {
             this.redisHost = cfg.getNode("Redis", "Host").getString();
             this.redisPass = cfg.getNode("Redis", "Password").getString();
             this.serverName = cfg.getNode("Market", "Sponge", "Server").getString();
+            this.Currency = cfg.getNode("Market", "Preferences", "Currency").getString();
 
             if (this.cfg.getNode("Redis", "Use-password").getBoolean()) {
                 jedisPool = setupRedis(this.redisHost, this.redisPort, this.redisPass);
@@ -421,6 +425,20 @@ public class Market {
 
     public PaginationList getListings() {
         try (Jedis jedis = getJedis().getResource()) {
+            //Determining Unicode for Currency
+            if (this.Currency == "£") {
+                this.Currency = "\\u00a3";
+            }
+            else if (this.Currency == "€") {
+                this.Currency = "\\u20AC";
+            }
+            else if (this.Currency == "₣") {
+                this.Currency = "\\u20A3";
+            }
+            else if (this.Currency == "¥") {
+                this.Currency = "\\u00A5";
+            }
+            //Continue Process
             Set<String> openListings = jedis.hgetAll(RedisKeys.FOR_SALE).keySet();
             List<Text> texts = new ArrayList<>();
             for (String openListing : openListings) {
@@ -432,7 +450,7 @@ public class Market {
                 l.append(Text.of(" "));
                 l.append(Text.of(TextColors.WHITE, "@"));
                 l.append(Text.of(" "));
-                l.append(Text.of(TextColors.GREEN, "$" + listing.get("Price")));
+                l.append(Text.of(TextColors.GREEN, this.Currency + listing.get("Price")));
                 l.append(Text.of(" "));
                 l.append(Text.of(TextColors.WHITE, "for"));
                 l.append(Text.of(" "));
@@ -643,7 +661,7 @@ public class Market {
                     l.append(Text.of(" "));
                     l.append(Text.of(TextColors.WHITE, "@"));
                     l.append(Text.of(" "));
-                    l.append(Text.of(TextColors.GREEN, "$" + listing.get("Price")));
+                    l.append(Text.of(TextColors.GREEN, cfg.getNode("Market", "Preferences", "Currency") + listing.get("Price")));
                     l.append(Text.of(" "));
                     l.append(Text.of(TextColors.WHITE, "for"));
                     l.append(Text.of(" "));
@@ -680,7 +698,7 @@ public class Market {
                     l.append(Text.of(" "));
                     l.append(Text.of(TextColors.WHITE, "@"));
                     l.append(Text.of(" "));
-                    l.append(Text.of(TextColors.GREEN, "$" + listing.get("Price")));
+                    l.append(Text.of(TextColors.GREEN, cfg.getNode("Market", "Preferences", "Currency") + listing.get("Price")));
                     l.append(Text.of(" "));
                     l.append(Text.of(TextColors.WHITE, "for"));
                     l.append(Text.of(" "));
